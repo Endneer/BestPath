@@ -1,22 +1,18 @@
 package bestPath;
 
 import javafx.event.Event;
-import javafx.event.EventHandler;
 import javafx.fxml.FXML;
 import javafx.scene.Cursor;
-import javafx.scene.control.ContextMenu;
-import javafx.scene.control.Label;
-import javafx.scene.control.MenuItem;
-import javafx.scene.control.TextInputDialog;
+import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.AnchorPane;
+import javafx.scene.layout.Pane;
 import javafx.scene.shape.Line;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 
 public class Controller {
@@ -31,34 +27,50 @@ public class Controller {
     private Router sourceRouter = null;
     private Router destinationRouter = null;
 
-    private List<Router> visitedRouters = new ArrayList<>();
+    private List<Router> explored = new ArrayList<>();
+    private List<String> returnedPathForFrontier = new ArrayList<>();
     private List<Router> frontier = new ArrayList<>();
     private List<Float> frontierWeights = new ArrayList<>();
 
     private int numberOfRouters = 0;
 
+
     public void calc(MouseEvent mouseEvent) {
         if (sourceRouter.isDestination()) drawing.getScene().getWindow().hide();
-        visitedRouters.add(sourceRouter);
+        explored.add(sourceRouter);
         frontier.addAll(sourceRouter.getConnectedRouters());
         frontierWeights.addAll(sourceRouter.getConnectedRoutersWeights());
+        for (int i = 0; i < sourceRouter.getConnectedRouters().size(); i++) {
+            returnedPathForFrontier.add(sourceRouter.getLabel() + ", " + sourceRouter.getConnectedRouters().get(i).getLabel());
+        }
 
-        int smallestIndex = 0;
-        for (int i = 0; i < frontier.size(); i++) {
-            if (frontierWeights.get(i) < frontierWeights.get(smallestIndex)) {
-                smallestIndex = i;
+        String path = null;
+
+        while (true) {
+            int smallestIndex = 0;
+            for (int i = 0; i < frontier.size(); i++) {
+                if (frontierWeights.get(i) < frontierWeights.get(smallestIndex)) {
+                    smallestIndex = i;
+                }
             }
+            Router router = frontier.get(smallestIndex);
+
+            float routerWeight = frontierWeights.get(smallestIndex);
+            frontier.remove(smallestIndex);
+            frontierWeights.remove(smallestIndex);
+            path = returnedPathForFrontier.get(smallestIndex);
+            returnedPathForFrontier.remove(smallestIndex);
+            for (int i = 0; i < router.getConnectedRouters().size(); i++) {
+                if (!explored.contains(router.getConnectedRouters().get(i)) && !frontier.contains(router.getConnectedRouters().get(i))) {
+                    frontier.add(router.getConnectedRouters().get(i));
+                    frontierWeights.add(routerWeight + router.getConnectedRoutersWeights().get(i));
+                    returnedPathForFrontier.add(path + ", " + router.getConnectedRouters().get(i).getLabel());
+                }
+            }
+            explored.add(router);
+            if (router.isDestination()) break;
         }
-        Router router = frontier.get(smallestIndex);
-        frontier.remove(smallestIndex);
-        frontierWeights.remove(smallestIndex);
-        frontier.addAll(router.getConnectedRouters());
-        frontierWeights.addAll(router.getConnectedRoutersWeights());
-        visitedRouters.add(router);
-        for (int i = 0; i < router.getConnectedRouters().size(); i++) {
-            if (visitedRouters.contains(router.getConnectedRouters().get(i))) {}
-        }
-        if (router.isDestination()) drawing.getScene().getWindow().hide();
+        Optional<ButtonType> alert = new Alert(Alert.AlertType.INFORMATION, path).showAndWait();
     }
 
 
@@ -116,6 +128,7 @@ public class Controller {
         drawing.getChildren().add(router);
         numberOfRouters++;
         routerLabel.setText("router " + numberOfRouters);
+        router.setLabel("router " + numberOfRouters);
         drawing.getChildren().add(routerLabel);
     }
 
@@ -127,6 +140,8 @@ public class Controller {
         public ArrayList<Float> getConnectedRoutersWeights() {
             return (ArrayList<Float>) connectedRoutersWeights;
         }
+
+        private String label;
 
         public float getCenterX() {
             return x;
@@ -157,6 +172,14 @@ public class Controller {
 
         public boolean isDestination() {
             return this == destinationRouter ? true : false;
+        }
+
+        public void setLabel(String label) {
+            this.label = label;
+        }
+
+        public String getLabel() {
+            return label;
         }
     }
 }
