@@ -9,7 +9,6 @@ import javafx.scene.image.ImageView;
 import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.AnchorPane;
-import javafx.scene.layout.Pane;
 import javafx.scene.shape.Line;
 
 import java.util.*;
@@ -45,6 +44,7 @@ public class Controller {
         }
 
         String path = null;
+        Float cost = null;
 
         while (true) {
             int smallestIndex = 0;
@@ -55,16 +55,25 @@ public class Controller {
             }
             Router router = frontier.get(smallestIndex);
 
-            float routerWeight = frontierWeights.get(smallestIndex);
+            cost = frontierWeights.get(smallestIndex);
             frontier.remove(smallestIndex);
             frontierWeights.remove(smallestIndex);
             path = returnedPathForFrontier.get(smallestIndex);
             returnedPathForFrontier.remove(smallestIndex);
             for (int i = 0; i < router.getConnectedRouters().size(); i++) {
-                if (!explored.contains(router.getConnectedRouters().get(i)) && !frontier.contains(router.getConnectedRouters().get(i))) {
-                    frontier.add(router.getConnectedRouters().get(i));
-                    frontierWeights.add(routerWeight + router.getConnectedRoutersWeights().get(i));
-                    returnedPathForFrontier.add(path + ", " + router.getConnectedRouters().get(i).getLabel());
+                Router childRouter = router.getConnectedRouters().get(i);
+                Float childRouterWeight = cost + router.getConnectedRoutersWeights().get(i);
+                String pathToChildRouter = path + ", " + router.getConnectedRouters().get(i).getLabel();
+                if (explored.contains(childRouter)) {
+                } else if (frontier.contains(childRouter)) {
+                    if (childRouterWeight < frontierWeights.get(frontier.indexOf(childRouter))) {
+                        frontierWeights.set(frontier.indexOf(childRouter), childRouterWeight);
+                        returnedPathForFrontier.set(frontier.indexOf(childRouter), pathToChildRouter);
+                    }
+                } else {
+                    frontier.add(childRouter);
+                    frontierWeights.add(childRouterWeight);
+                    returnedPathForFrontier.add(pathToChildRouter);
                 }
             }
             explored.add(router);
@@ -76,8 +85,6 @@ public class Controller {
 
     public void addRouter(MouseEvent mouseEvent) {
         Router router = new Router((float) mouseEvent.getX(), (float) mouseEvent.getY());
-//        router.connectedRouters.add(router);
-//        router.connectedRoutersWeights.add((float) 0);
         router.setOnMousePressed(Event::consume);
         router.setOnContextMenuRequested(event -> {
             ContextMenu contextMenu = new ContextMenu();
@@ -111,13 +118,13 @@ public class Controller {
                         try {
                             label.setText(String.valueOf(Float.parseFloat(inputDialog.getEditor().getText())));
                         } catch (NumberFormatException exception) {
+                        } finally {
+                            firstClickedRouter.getConnectedRoutersWeights().add(Float.parseFloat(label.getText()));
+                            router.getConnectedRoutersWeights().add(Float.parseFloat(label.getText()));
                         }
                         drawing.getChildren().add(label);
                     });
-                    int index = firstClickedRouter.getConnectedRouters().indexOf(router);
-                    firstClickedRouter.getConnectedRoutersWeights().add(index, Float.parseFloat(label.getText()));
-                    index = router.getConnectedRouters().indexOf(firstClickedRouter);
-                    router.getConnectedRoutersWeights().add(index, Float.parseFloat(label.getText()));
+
                     connecting = false;
                 }
             event.consume();
